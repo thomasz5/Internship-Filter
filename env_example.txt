@@ -1,0 +1,15 @@
+# UW Internship Finder Configuration
+
+# LinkedIn Credentials (required for scraping)
+LINKEDIN_EMAIL=your-email@example.com
+LINKEDIN_PASSWORD=your-password
+
+# GitHub Token (optional but recommended for higher rate limits)
+# Get from: https://github.com/settings/tokens
+GITHUB_TOKEN=your-github-token
+
+# You can modify these in config.py if needed:
+# - TARGET_COLLEGE: University of Washington (default)
+# - CHECK_INTERVAL_HOURS: 12 (default)
+# - MAX_PROFILES_PER_COMPANY: 20 (default)
+# - REQUEST_DELAY_MIN/MAX: 3.0-6.0 seconds (default) 
