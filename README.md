@@ -4,14 +4,6 @@
 
 This tool automatically monitors the [SimplifyJobs Summer 2026 Internships](https://github.com/SimplifyJobs/Summer2026-Internships.git) repository and other internship tracking repos for new opportunities, then helps you find UW alumni working at those companies.
 
-##  What This Tool Does
-
-
-1. ** Monitors GitHub** - Tracks internship repositories for new postings every 12 hours
-2. ** Finds UW Alumni** - Searches LinkedIn for University of Washington graduates at companies with new internships
-3. ** Organizes Data** - Stores everything in a database and exports to CSV for easy viewing
-4. ** Works Automatically** - Runs in the background so you don't have to manually check
-
 ## Important Legal Notice
 
 **This tool is for personal educational use by students.** 
