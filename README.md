@@ -7,12 +7,12 @@ This tool automatically monitors the [SimplifyJobs Summer 2026 Internships](http
 ##  What This Tool Does
 
 
-1. **🔍 Monitors GitHub** - Tracks internship repositories for new postings every 12 hours
-2. **🎓 Finds UW Alumni** - Searches LinkedIn for University of Washington graduates at companies with new internships
-3. **📊 Organizes Data** - Stores everything in a database and exports to CSV for easy viewing
-4. **🤖 Works Automatically** - Runs in the background so you don't have to manually check
+1. ** Monitors GitHub** - Tracks internship repositories for new postings every 12 hours
+2. ** Finds UW Alumni** - Searches LinkedIn for University of Washington graduates at companies with new internships
+3. ** Organizes Data** - Stores everything in a database and exports to CSV for easy viewing
+4. ** Works Automatically** - Runs in the background so you don't have to manually check
 
-## 🚨 Important Legal Notice
+## Important Legal Notice
 
 **This tool is for personal educational use by students.** 
 - Only scrapes publicly available information
@@ -20,12 +20,6 @@ This tool automatically monitors the [SimplifyJobs Summer 2026 Internships](http
 - You are responsible for complying with LinkedIn's Terms of Service
 - Consider using LinkedIn's official APIs for commercial use
 
-## 🚀 Quick Setup
-
-### Prerequisites
-- Python 3.9+
-- Google Chrome browser
-- LinkedIn account
 
 ### Installation
 
@@ -51,8 +45,6 @@ python main.py run
 # Start continuous monitoring (every 12 hours)
 python main.py monitor
 ```
-
-That's it! The tool will now automatically find new internships and UW alumni for you.
 
 ## Usage Commands
 
