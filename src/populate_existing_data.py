@@ -96,15 +96,15 @@ def save_to_database(internships):
     conn.commit()
     conn.close()
     
-    print(f"💾 Saved {saved_count} internships to database")
+    print(f"Saved {saved_count} internships to database")
     return saved_count
 
 def main():
-    print("📚 Parsing existing internships from repository...")
+    print("Parsing existing internships from repository...")
     internships = parse_current_internships()
     
     if internships:
-        print(f"✅ Found {len(internships)} relevant internship opportunities")
+        print(f"Found {len(internships)} relevant internship opportunities")
         
         # Show a few examples
         print("\n📋 Examples of what was found:")
@@ -118,11 +118,11 @@ def main():
         saved_count = save_to_database(internships)
         
         if saved_count > 0:
-            print(f"\n🎉 Successfully added {saved_count} internships!")
-            print("📊 Now run 'python main.py excel' to see them in your Excel spreadsheet!")
+            print(f"\nSuccessfully added {saved_count} internships!")
+            print("Now run 'python main.py excel' to see them in your Excel spreadsheet!")
         
     else:
-        print("❌ No relevant internships found")
+        print("No relevant internships found")
 
 if __name__ == "__main__":
     main() 

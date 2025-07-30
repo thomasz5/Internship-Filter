@@ -44,7 +44,7 @@ class ExcelIntegration:
             # Save workbook
             wb.save(self.excel_file)
             
-            print(f"📊 Excel file updated: {self.excel_file}")
+            print(f"Excel file updated: {self.excel_file}")
             print(f"   • {len(internships_df)} internship opportunities")
             print(f"   • {len(alumni_df)} UW alumni profiles")
             print(f"   • {len(opportunities_df)} combined opportunities")
@@ -199,7 +199,7 @@ class ExcelIntegration:
     
     def _create_internships_sheet(self, wb, df):
         """Create internships-only sheet"""
-        sheet_name = "📚 Internships"
+        sheet_name = "Internships"
         
         if sheet_name in wb.sheetnames:
             wb.remove(wb[sheet_name])
@@ -238,7 +238,7 @@ class ExcelIntegration:
     
     def _create_alumni_sheet(self, wb, df):
         """Create UW alumni sheet"""
-        sheet_name = "🎓 UW Alumni"
+        sheet_name = "UW Alumni"
         
         if sheet_name in wb.sheetnames:
             wb.remove(wb[sheet_name])
@@ -277,7 +277,7 @@ class ExcelIntegration:
     
     def _create_summary_sheet(self, wb, internships_df, alumni_df):
         """Create summary dashboard sheet"""
-        sheet_name = "📊 Dashboard"
+        sheet_name = "Dashboard"
         
         if sheet_name in wb.sheetnames:
             wb.remove(wb[sheet_name])
@@ -294,7 +294,7 @@ class ExcelIntegration:
         ws['A3'].font = Font(italic=True)
         
         # Statistics
-        ws['A5'] = "📈 Summary Statistics"
+        ws['A5'] = "Summary Statistics"
         ws['A5'].font = Font(size=14, bold=True)
         
         ws['A7'] = "Total Internships Found:"
@@ -366,8 +366,8 @@ class ExcelIntegration:
             wb = load_workbook(self.excel_file)
             
             # Add to dashboard
-            if "📊 Dashboard" in wb.sheetnames:
-                ws = wb["📊 Dashboard"]
+            if "Dashboard" in wb.sheetnames:
+                ws = wb["Dashboard"]
                 
                 # Find next available row for notifications
                 notification_row = 25

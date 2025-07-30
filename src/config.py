@@ -2,6 +2,10 @@
 
 import os
 from typing import List
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class Config:
     # LinkedIn Authentication
@@ -43,8 +47,11 @@ class Config:
     ]
     
     # Database
-    DATABASE_PATH = "internship_tracker.db"
+    DATABASE_PATH = "output/internship_tracker.db"
     
     # Output Settings
-    OUTPUT_CSV = "found_opportunities.csv"
-    LOG_FILE = "scraper.log" 
+    OUTPUT_CSV = "output/found_opportunities.csv"
+    LOG_FILE = "logs/scraper.log"
+    
+    # Debug Settings
+    DEBUG_MODE = True  # Enable detailed logging for troubleshooting 

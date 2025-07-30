@@ -146,11 +146,11 @@ class InternshipGitHubMonitor:
         internships = []
         
         # For SimplifyJobs format: | Company | Role | Location | Application | Age |
-        if "SimplifyJobs" in repo_name:
+        if "SimplifyJobs" in repo_name or "Summer2026" in repo_name:
             internships.extend(self._parse_simplify_jobs_format(content, repo_name, commit_hash))
         
         # For speedyapply format (may be different)
-        elif "speedyapply" in repo_name:
+        elif "speedyapply" in repo_name or "2026-SWE" in repo_name:
             internships.extend(self._parse_speedyapply_format(content, repo_name, commit_hash))
         
         return internships
@@ -217,10 +217,71 @@ class InternshipGitHubMonitor:
         }
     
     def _parse_speedyapply_format(self, content: str, repo_name: str, commit_hash: str) -> List[Dict]:
-        """Parse speedyapply format (implement based on their structure)"""
-        # This would need to be customized based on their specific format
-        # For now, return empty list - you can extend this based on their README structure
-        return []
+        """Parse speedyapply format: | Company | Position | Location | Salary | Posting | Age |"""
+        internships = []
+        
+        # Look for markdown table rows with company links
+        lines = content.split('\n')
+        current_section = ""
+        
+        for line in lines:
+            # Track current section
+            if line.startswith('##') and any(keyword in line.lower() for keyword in ['faang', 'quant', 'other']):
+                current_section = line.strip()
+                continue
+            
+            # Parse table rows (format: | <a href="..."><strong>Company</strong></a> | Position | Location | Salary | Posting | Age |)
+            if '<strong>' in line and '</strong>' in line and line.count('|') >= 5:
+                try:
+                    internship = self._parse_speedyapply_table_row(line, repo_name, commit_hash, current_section)
+                    if internship and self._is_relevant_internship(internship):
+                        internships.append(internship)
+                except Exception as e:
+                    self.logger.debug(f"Error parsing speedyapply line: {line[:50]}... - {e}")
+        
+        return internships
+    
+    def _parse_speedyapply_table_row(self, line: str, repo_name: str, commit_hash: str, section: str) -> Optional[Dict]:
+        """Parse a single speedyapply table row"""
+        # Split by | and clean up
+        parts = [part.strip() for part in line.split('|')]
+        
+        if len(parts) < 6:  # Need at least 6 parts for this format
+            return None
+        
+        company_part = parts[1]  # <a href="..."><strong>Company</strong></a>
+        position_part = parts[2]  # Position/Role
+        location_part = parts[3]  # Location
+        salary_part = parts[4]    # Salary (optional)
+        posting_part = parts[5]   # Posting link
+        age_part = parts[6] if len(parts) > 6 else ""  # Age
+        
+        # Extract company name from <strong>Company</strong>
+        company_match = re.search(r'<strong>(.*?)</strong>', company_part)
+        company = company_match.group(1) if company_match else company_part.strip()
+        
+        # Extract application link from posting part
+        app_link_match = re.search(r'href="([^"]*)"', posting_part)
+        application_link = app_link_match.group(1) if app_link_match else ""
+        
+        # Clean up the data
+        position = position_part.strip()
+        location = location_part.strip()
+        
+        # Filter out non-relevant positions
+        if not position or not company:
+            return None
+        
+        return {
+            'company': company,
+            'role': position,
+            'location': location,
+            'application_link': application_link,
+            'source_repo': repo_name,
+            'commit_hash': commit_hash,
+            'section': section,
+            'discovered_date': datetime.now().isoformat()
+        }
     
     def _is_relevant_internship(self, internship: Dict) -> bool:
         """Check if internship is relevant based on location and role"""

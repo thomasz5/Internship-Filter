@@ -167,3 +167,9 @@ celerybeat.pid
 .mypy_cache/
 .dmypy.json
 dmypy.json aws_deployment_guide.md
+
+# Personal command guides and notes
+COMMAND_GUIDE.md
+command_guide.md
+COMMANDS.md
+commands.md
