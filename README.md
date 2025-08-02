@@ -4,6 +4,10 @@
 
 This tool automatically monitors internship tracking repositories for new opportunities and helps you find UW alumni working at those companies.
 
+## Demo Video
+
+[![Recruitment Demo](./Recruitment.mp4)](./Recruitment.mp4)
+
 ## What This Tool Does
 
 1. **Monitors GitHub** - Tracks internship repositories for new postings every 12 hours
