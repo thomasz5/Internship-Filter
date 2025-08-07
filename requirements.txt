@@ -6,6 +6,9 @@ schedule==1.2.0
 # Optional but recommended
 requests==2.31.0
 beautifulsoup4==4.12.2
+boto3==1.34.0
+pandas==2.1.4
+openpyxl==3.1.2
 
 # For development/testing
 pytest==7.4.3 

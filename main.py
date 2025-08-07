@@ -18,6 +18,7 @@ from src.config import Config
 from src.github_monitor import InternshipGitHubMonitor
 from src.linkedin_scraper import UWLinkedInScraper
 from src.excel_integration import ExcelIntegration
+from src.aws_monitor import EC2Monitor
 
 class UWInternshipFinder:
     def __init__(self):
@@ -25,6 +26,7 @@ class UWInternshipFinder:
         self.github_monitor = InternshipGitHubMonitor()
         self.linkedin_scraper = UWLinkedInScraper()
         self.excel_integration = ExcelIntegration()
+        self.ec2_monitor = EC2Monitor()
         
         # Setup logging
         logging.basicConfig(
@@ -234,11 +236,13 @@ class UWInternshipFinder:
 def main():
     parser = argparse.ArgumentParser(description='UW Internship Finder - Monitor internships and find UW alumni')
     parser.add_argument('command', choices=[
-        'run', 'monitor', 'summary', 'recent', 'alumni', 'export', 'excel', 'github-only', 'linkedin-only'
+        'run', 'monitor', 'summary', 'recent', 'alumni', 'export', 'excel', 'github-only', 'linkedin-only', 'aws-status', 'aws-start', 'aws-stop'
     ], help='Command to execute')
     parser.add_argument('--company', type=str, help='Company name for alumni search')
     parser.add_argument('--days', type=int, default=7, help='Number of days for recent search')
     parser.add_argument('--companies', nargs='+', help='Specific companies to scrape LinkedIn for')
+    parser.add_argument('--instance-id', type=str, help='EC2 instance ID for start/stop operations')
+    parser.add_argument('--region', type=str, help='AWS region to check (default: all regions)')
     
     args = parser.parse_args()
     
@@ -309,6 +313,52 @@ def main():
             print("Excel file updated successfully!")
         else:
             print("Failed to update Excel file")
+    
+    elif args.command == 'aws-status':
+        # Check AWS EC2 status
+        print("Checking AWS EC2 instance status...")
+        if args.region:
+            status_data = finder.ec2_monitor.check_ec2_instances(args.region)
+        else:
+            status_data = finder.ec2_monitor.check_all_regions()
+        
+        finder.ec2_monitor.print_status_report(status_data)
+        
+        # Also update Excel with this information
+        print("\nUpdating Excel with AWS status...")
+        finder.excel_integration.create_or_update_excel()
+    
+    elif args.command == 'aws-start':
+        # Start EC2 instance
+        if not args.instance_id:
+            print("❌ Please specify --instance-id for instance to start")
+            sys.exit(1)
+        
+        print(f"Starting EC2 instance {args.instance_id}...")
+        result = finder.ec2_monitor.start_instance(args.instance_id, args.region)
+        
+        if 'error' in result:
+            print(f"❌ {result['error']}")
+        else:
+            print(f"✅ {result['message']}")
+            # Update Excel after instance state change
+            finder.excel_integration.create_or_update_excel()
+    
+    elif args.command == 'aws-stop':
+        # Stop EC2 instance
+        if not args.instance_id:
+            print("❌ Please specify --instance-id for instance to stop")
+            sys.exit(1)
+        
+        print(f"Stopping EC2 instance {args.instance_id}...")
+        result = finder.ec2_monitor.stop_instance(args.instance_id, args.region)
+        
+        if 'error' in result:
+            print(f"❌ {result['error']}")
+        else:
+            print(f"✅ {result['message']}")
+            # Update Excel after instance state change
+            finder.excel_integration.create_or_update_excel()
 
 if __name__ == "__main__":
     main() 

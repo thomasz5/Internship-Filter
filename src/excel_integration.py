@@ -13,12 +13,14 @@ from datetime import datetime
 import os
 import logging
 from config import Config
+from aws_monitor import EC2Monitor
 
 class ExcelIntegration:
     def __init__(self):
         self.config = Config()
         self.excel_file = "UW_Internship_Tracker.xlsx"
         self.logger = logging.getLogger(__name__)
+        self.ec2_monitor = EC2Monitor()
         
     def create_or_update_excel(self):
         """Create or update the Excel workbook with latest data"""
@@ -39,6 +41,7 @@ class ExcelIntegration:
             self._create_opportunities_sheet(wb, opportunities_df)
             self._create_internships_sheet(wb, internships_df)
             self._create_alumni_sheet(wb, alumni_df)
+            self._create_aws_status_sheet(wb)
             self._create_summary_sheet(wb, internships_df, alumni_df)
             
             # Save workbook
@@ -274,6 +277,150 @@ class ExcelIntegration:
         # Add auto-filter
         max_col_letter = ws.cell(row=1, column=ws.max_column).column_letter
         ws.auto_filter.ref = f"A1:{max_col_letter}{ws.max_row}"
+    
+    def _create_aws_status_sheet(self, wb):
+        """Create AWS EC2 status monitoring sheet"""
+        sheet_name = "☁️ AWS Status"
+        
+        if sheet_name in wb.sheetnames:
+            wb.remove(wb[sheet_name])
+        
+        ws = wb.create_sheet(sheet_name)
+        
+        # Title
+        ws['A1'] = "AWS EC2 Instance Status"
+        ws['A1'].font = Font(size=16, bold=True, color="FF6600")
+        ws.merge_cells('A1:G1')
+        
+        # Get EC2 status
+        try:
+            print("   🔍 Checking AWS EC2 status...")
+            ec2_status = self.ec2_monitor.check_all_regions()
+            
+            if 'error' in ec2_status:
+                # Show error information
+                ws['A3'] = "❌ Error connecting to AWS"
+                ws['A3'].font = Font(bold=True, color="FF0000")
+                ws['A4'] = ec2_status['error']
+                ws['A6'] = "To fix this issue:"
+                ws['A6'].font = Font(bold=True)
+                
+                instructions = [
+                    "1. Install AWS CLI: pip install awscli",
+                    "2. Configure credentials: aws configure",
+                    "3. Or set environment variables:",
+                    "   AWS_ACCESS_KEY_ID=your-key-id",
+                    "   AWS_SECRET_ACCESS_KEY=your-secret-key",
+                    "4. Alternatively, run manually:",
+                    "   python3 src/aws_monitor.py"
+                ]
+                
+                for i, instruction in enumerate(instructions, 7):
+                    ws[f'A{i}'] = instruction
+                    if instruction.startswith('   '):
+                        ws[f'A{i}'].font = Font(italic=True, color="666666")
+                
+                return
+            
+            # Summary information
+            ws['A3'] = f"Last Checked: {ec2_status['timestamp']}"
+            ws['A3'].font = Font(italic=True)
+            
+            ws['A5'] = "Summary:"
+            ws['A5'].font = Font(bold=True)
+            
+            ws['A6'] = f"Total Regions Checked: {ec2_status['total_regions_checked']}"
+            ws['A7'] = f"Regions with Instances: {ec2_status['regions_with_instances']}"
+            ws['A8'] = f"Total Instances: {ec2_status['total_instances']}"
+            ws['A9'] = f"Running: {ec2_status['total_running']}"
+            ws['A9'].fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+            ws['A10'] = f"Stopped: {ec2_status['total_stopped']}"
+            if ec2_status['total_stopped'] > 0:
+                ws['A10'].fill = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
+            
+            # Instance details header
+            current_row = 12
+            ws[f'A{current_row}'] = "Instance Details:"
+            ws[f'A{current_row}'].font = Font(bold=True)
+            current_row += 1
+            
+            # Headers for instance table
+            headers = ["Region", "Name", "Instance ID", "Type", "State", "Public IP", "Launch Time"]
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=current_row, column=col, value=header)
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="FF6600", end_color="FF6600", fill_type="solid")
+                cell.alignment = Alignment(horizontal="center")
+            
+            current_row += 1
+            
+            # Add instance data
+            for region_data in ec2_status.get('regions', []):
+                region_name = region_data['region']
+                for instance in region_data['instances']:
+                    ws.cell(row=current_row, column=1, value=region_name)
+                    ws.cell(row=current_row, column=2, value=instance['name'])
+                    ws.cell(row=current_row, column=3, value=instance['instance_id'])
+                    ws.cell(row=current_row, column=4, value=instance['instance_type'])
+                    
+                    # State with color coding
+                    state_cell = ws.cell(row=current_row, column=5, value=instance['state'])
+                    if instance['state'] == 'running':
+                        state_cell.fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+                        state_cell.font = Font(bold=True)
+                    elif instance['state'] == 'stopped':
+                        state_cell.fill = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
+                    elif instance['state'] in ['pending', 'stopping', 'starting']:
+                        state_cell.fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+                    
+                    ws.cell(row=current_row, column=6, value=instance['public_ip'])
+                    ws.cell(row=current_row, column=7, value=instance['launch_time'])
+                    
+                    current_row += 1
+            
+            # Auto-adjust column widths
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 30)
+                ws.column_dimensions[column_letter].width = adjusted_width
+            
+            # Add auto-filter to instance table
+            if current_row > 14:  # If we have instance data
+                ws.auto_filter.ref = f"A13:G{current_row-1}"
+            
+            # Cost estimation section
+            if ec2_status['total_instances'] > 0:
+                cost_row = current_row + 2
+                ws[f'A{cost_row}'] = "💰 Cost Estimates (30 days):"
+                ws[f'A{cost_row}'].font = Font(bold=True)
+                
+                try:
+                    cost_data = self.ec2_monitor.get_instance_costs()
+                    if 'error' not in cost_data:
+                        cost_row += 1
+                        ws[f'A{cost_row}'] = f"Total Estimated: ${cost_data['total_estimated_cost']}"
+                        ws[f'A{cost_row}'].font = Font(bold=True, color="FF6600")
+                        
+                        cost_row += 1
+                        ws[f'A{cost_row}'] = "(Estimates based on standard pricing - check AWS billing for actual costs)"
+                        ws[f'A{cost_row}'].font = Font(italic=True, size=10)
+                except:
+                    cost_row += 1
+                    ws[f'A{cost_row}'] = "Cost estimation unavailable"
+            
+        except Exception as e:
+            self.logger.error(f"Error getting AWS status: {e}")
+            ws['A3'] = f"❌ Error retrieving AWS status: {str(e)}"
+            ws['A3'].font = Font(color="FF0000")
+            ws['A5'] = "Try running: python3 src/aws_monitor.py"
+            ws['A5'].font = Font(italic=True)
     
     def _create_summary_sheet(self, wb, internships_df, alumni_df):
         """Create summary dashboard sheet"""
