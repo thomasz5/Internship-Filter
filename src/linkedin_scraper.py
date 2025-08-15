@@ -22,6 +22,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import logging
 from config import Config
+from bs4 import BeautifulSoup
 
 class UWLinkedInScraper:
     def __init__(self):
@@ -318,7 +319,43 @@ class UWLinkedInScraper:
                         self.logger.debug(f"Error extracting profile {i+1}: {e}")
                         continue
             else:
-                self.logger.warning("No search results found with any selector")
+                # As a fallback, parse with BeautifulSoup to find result cards
+                self.logger.warning("No search results found with Selenium selectors; trying BeautifulSoup fallback")
+                soup = BeautifulSoup(self.driver.page_source, "html.parser")
+                bs_cards = soup.select('.entity-result, .reusable-search__result-container, .search-result')
+                self.logger.debug(f"BeautifulSoup found {len(bs_cards)} potential result cards")
+                for card in bs_cards:
+                    try:
+                        name_el = card.select_one(".entity-result__title-text a span[aria-hidden='true'], .actor-name, a[href*='/in/'] span[aria-hidden='true']")
+                        link_el = card.select_one(".entity-result__title-text a[href*='/in/'], a[href*='/in/']")
+                        title_el = card.select_one(".entity-result__primary-subtitle, .subline-level-1, .t-14.t-black--light")
+
+                        name = name_el.get_text(strip=True) if name_el else ""
+                        linkedin_url = link_el.get('href') if link_el else ""
+                        title = title_el.get_text(strip=True) if title_el else ""
+
+                        if not name or '/in/' not in (linkedin_url or ''):
+                            continue
+
+                        # Clean URL
+                        if '?' in linkedin_url:
+                            linkedin_url = linkedin_url.split('?')[0]
+
+                        if not self._verify_uw_connection_text(card.get_text(" ").lower()):
+                            continue
+
+                        profiles.append({
+                            'name': name,
+                            'title': title or "Not specified",
+                            'company': company_name,
+                            'linkedin_url': linkedin_url,
+                            'location': "",
+                            'college_match': 1,
+                            'discovered_date': time.strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                    except Exception as e:
+                        self.logger.debug(f"BeautifulSoup card parse error: {e}")
+                        continue
                 
         except Exception as e:
             self.logger.error(f"Error extracting profiles from page: {e}")
@@ -493,6 +530,19 @@ class UWLinkedInScraper:
             
         except Exception:
             return True  # If we can't verify, assume it's valid since it came from our search
+
+    def _verify_uw_connection_text(self, text_content: str) -> bool:
+        """Text-only variant used by BeautifulSoup fallback."""
+        try:
+            uw_indicators = [
+                'university of washington',
+                'uw seattle',
+                'university of washington seattle',
+                'washington university'
+            ]
+            return any(indicator in (text_content or '') for indicator in uw_indicators)
+        except Exception:
+            return True
     
     def _go_to_next_page(self) -> bool:
         """Navigate to next page of search results"""

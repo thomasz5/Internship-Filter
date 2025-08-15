@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import logging
 from config import Config
+from bs4 import BeautifulSoup
 
 class InternshipGitHubMonitor:
     def __init__(self):
@@ -242,46 +243,72 @@ class InternshipGitHubMonitor:
         return internships
     
     def _parse_speedyapply_table_row(self, line: str, repo_name: str, commit_hash: str, section: str) -> Optional[Dict]:
-        """Parse a single speedyapply table row"""
+        """Parse a single speedyapply table row using BeautifulSoup for robust HTML extraction.
+        Falls back to the previous regex approach if parsing fails.
+        """
         # Split by | and clean up
         parts = [part.strip() for part in line.split('|')]
-        
-        if len(parts) < 6:  # Need at least 6 parts for this format
+
+        if len(parts) < 6:
             return None
-        
-        company_part = parts[1]  # <a href="..."><strong>Company</strong></a>
+
+        company_part = parts[1]   # e.g. <a href="..."><strong>Company</strong></a>
         position_part = parts[2]  # Position/Role
         location_part = parts[3]  # Location
-        salary_part = parts[4]    # Salary (optional)
-        posting_part = parts[5]   # Posting link
-        age_part = parts[6] if len(parts) > 6 else ""  # Age
-        
-        # Extract company name from <strong>Company</strong>
-        company_match = re.search(r'<strong>(.*?)</strong>', company_part)
-        company = company_match.group(1) if company_match else company_part.strip()
-        
-        # Extract application link from posting part
-        app_link_match = re.search(r'href="([^"]*)"', posting_part)
-        application_link = app_link_match.group(1) if app_link_match else ""
-        
-        # Clean up the data
-        position = position_part.strip()
-        location = location_part.strip()
-        
-        # Filter out non-relevant positions
-        if not position or not company:
-            return None
-        
-        return {
-            'company': company,
-            'role': position,
-            'location': location,
-            'application_link': application_link,
-            'source_repo': repo_name,
-            'commit_hash': commit_hash,
-            'section': section,
-            'discovered_date': datetime.now().isoformat()
-        }
+        posting_part = parts[5]   # Posting link cell (contains <a href="..."></a>)
+
+        try:
+            company_soup = BeautifulSoup(company_part, "html.parser")
+            posting_soup = BeautifulSoup(posting_part, "html.parser")
+
+            # Prefer the <strong> text inside the company cell
+            strong_tag = company_soup.find('strong')
+            company = strong_tag.get_text(strip=True) if strong_tag else company_soup.get_text(strip=True)
+
+            # First <a> href inside posting cell
+            posting_link = posting_soup.find('a')
+            application_link = posting_link['href'] if posting_link and posting_link.has_attr('href') else ""
+
+            position = position_part.strip()
+            location = location_part.strip()
+
+            if not position or not company:
+                return None
+
+            return {
+                'company': company,
+                'role': position,
+                'location': location,
+                'application_link': application_link,
+                'source_repo': repo_name,
+                'commit_hash': commit_hash,
+                'section': section,
+                'discovered_date': datetime.now().isoformat()
+            }
+        except Exception:
+            # Fallback to the previous regex-based approach
+            company_match = re.search(r'<strong>(.*?)</strong>', company_part)
+            company = company_match.group(1) if company_match else company_part.strip()
+
+            app_link_match = re.search(r'href="([^"]*)"', posting_part)
+            application_link = app_link_match.group(1) if app_link_match else ""
+
+            position = position_part.strip()
+            location = location_part.strip()
+
+            if not position or not company:
+                return None
+
+            return {
+                'company': company,
+                'role': position,
+                'location': location,
+                'application_link': application_link,
+                'source_repo': repo_name,
+                'commit_hash': commit_hash,
+                'section': section,
+                'discovered_date': datetime.now().isoformat()
+            }
     
     def _is_relevant_internship(self, internship: Dict) -> bool:
         """Check if internship is relevant based on location and role"""
