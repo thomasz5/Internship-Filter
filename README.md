@@ -59,7 +59,7 @@ python3 main.py run
 # Start continuous monitoring every 12 hours
 python3 main.py monitor
 
-# Show summary of findings
+# Show summary of finding
 python3 main.py summary
 
 # Update Excel spreadsheet
