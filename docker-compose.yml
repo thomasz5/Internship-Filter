@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: internship_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  selenium:
+    image: selenium/standalone-chrome:4.22.0-20240621
+    container_name: internship_selenium
+    shm_size: 2gb
+    ports:
+      - "4444:4444"
+    environment:
+      - SE_NODE_MAX_SESSIONS=1
+
+  app:
+    build: .
+    container_name: internship_app
+    depends_on:
+      - redis
+      - selenium
+    environment:
+      - USE_REMOTE_SELENIUM=true
+      - SELENIUM_REMOTE_URL=http://selenium:4444/wd/hub
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    command: ["python", "main.py", "worker", "--timeout", "10"]
+
+volumes:
+  redis_data:
+
