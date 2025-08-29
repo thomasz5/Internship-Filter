@@ -13,3 +13,13 @@ GITHUB_TOKEN=your-github-token
 # - CHECK_INTERVAL_HOURS: 12 (default)
 # - MAX_PROFILES_PER_COMPANY: 20 (default)
 # - REQUEST_DELAY_MIN/MAX: 3.0-6.0 seconds (default) 
+
+# Redis (for queue/worker)
+REDIS_URL=redis://localhost:6379/0
+REDIS_QUEUE_KEY=linkedin:companies
+REDIS_SEEN_SET_KEY=linkedin:companies:seen
+
+# Selenium remote (for Docker Selenium grid)
+USE_REMOTE_SELENIUM=false
+SELENIUM_REMOTE_URL=http://localhost:4444/wd/hub
+SELENIUM_HEADLESS=true

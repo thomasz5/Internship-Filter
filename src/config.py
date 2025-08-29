@@ -55,3 +55,13 @@ class Config:
     
     # Debug Settings
     DEBUG_MODE = True  # Enable detailed logging for troubleshooting 
+
+    # Redis / Queue Settings
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    REDIS_QUEUE_KEY = os.getenv('REDIS_QUEUE_KEY', 'linkedin:companies')
+    REDIS_SEEN_SET_KEY = os.getenv('REDIS_SEEN_SET_KEY', 'linkedin:companies:seen')
+
+    # Selenium Remote (for Docker)
+    USE_REMOTE_SELENIUM = os.getenv('USE_REMOTE_SELENIUM', 'false').lower() == 'true'
+    SELENIUM_REMOTE_URL = os.getenv('SELENIUM_REMOTE_URL', '')
+    SELENIUM_HEADLESS = os.getenv('SELENIUM_HEADLESS', 'true').lower() == 'true'

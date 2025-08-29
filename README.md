@@ -59,7 +59,7 @@ python3 main.py run
 # Start continuous monitoring every 12 hours
 python3 main.py monitor
 
-# Show summary of finding
+# Show summary of findings
 python3 main.py summary
 
 # Update Excel spreadsheet
@@ -87,6 +87,45 @@ python3 main.py recent --days 14
 # Export to CSV
 python3 main.py export
 ```
+
+## Docker + Redis 
+
+Run the app with Redis queue and a Selenium Chrome container:
+
+```bash
+# 1) Copy env-example to .env and fill credentials
+cp env_example.txt .env
+
+# 2) Start services (Redis, Selenium, app worker)
+docker compose up --build
+
+# 3) Enqueue companies to process
+docker compose run --rm app python main.py enqueue --companies "Microsoft" "Amazon"
+
+# Or enqueue latest companies from GitHub monitor
+docker compose run --rm app python main.py github-only
+docker compose run --rm app python main.py enqueue
+
+# 4) Check worker logs
+docker compose logs -f app
+```
+
+Useful commands:
+```bash
+# Run a one-shot worker job (process a single company then exit)
+docker compose run --rm app python main.py worker --once
+
+# Run scraper locally but use remote Selenium + Redis in compose
+export USE_REMOTE_SELENIUM=true
+export SELENIUM_REMOTE_URL=http://localhost:4444/wd/hub
+export REDIS_URL=redis://localhost:6379/0
+python3 main.py worker
+```
+
+### New CLI Commands
+
+- `enqueue`: Add companies to the Redis queue. Without `--companies`, it enqueues companies from recent GitHub findings.
+- `worker`: Consumes the queue and runs LinkedIn scraping for each company. Use `--once` to process one job and exit; `--timeout` controls BLPOP wait.
 
 
 

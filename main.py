@@ -10,6 +10,7 @@ import os
 import sys
 from datetime import datetime
 import logging
+import time
 
 # Add src folder to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -19,6 +20,7 @@ from src.github_monitor import InternshipGitHubMonitor
 from src.linkedin_scraper import UWLinkedInScraper
 from src.excel_integration import ExcelIntegration
 from src.aws_monitor import EC2Monitor
+from src.redis_queue import CompanyQueue
 
 class UWInternshipFinder:
     def __init__(self):
@@ -236,13 +238,16 @@ class UWInternshipFinder:
 def main():
     parser = argparse.ArgumentParser(description='UW Internship Finder - Monitor internships and find UW alumni')
     parser.add_argument('command', choices=[
-        'run', 'monitor', 'summary', 'recent', 'alumni', 'export', 'excel', 'github-only', 'linkedin-only', 'aws-status', 'aws-start', 'aws-stop'
+        'run', 'monitor', 'summary', 'recent', 'alumni', 'export', 'excel', 'github-only', 'linkedin-only', 'aws-status', 'aws-start', 'aws-stop',
+        'enqueue', 'worker'
     ], help='Command to execute')
     parser.add_argument('--company', type=str, help='Company name for alumni search')
     parser.add_argument('--days', type=int, default=7, help='Number of days for recent search')
     parser.add_argument('--companies', nargs='+', help='Specific companies to scrape LinkedIn for')
     parser.add_argument('--instance-id', type=str, help='EC2 instance ID for start/stop operations')
     parser.add_argument('--region', type=str, help='AWS region to check (default: all regions)')
+    parser.add_argument('--once', action='store_true', help='Worker: process a single job then exit')
+    parser.add_argument('--timeout', type=int, default=5, help='Worker: BLPOP timeout seconds')
     
     args = parser.parse_args()
     
@@ -291,6 +296,51 @@ def main():
             finder.linkedin_scraper.scrape_companies(args.companies)
         else:
             print("Please specify companies with --companies flag")
+    
+    elif args.command == 'enqueue':
+        # Enqueue companies to Redis queue
+        queue = CompanyQueue()
+        if args.companies:
+            enqueued = 0
+            for comp in args.companies:
+                if queue.enqueue_company(comp):
+                    enqueued += 1
+            print(f"Enqueued {enqueued}/{len(args.companies)} companies")
+        else:
+            # If no companies given, enqueue those with recent internships
+            companies = finder.github_monitor.get_companies_with_new_internships()
+            if not companies:
+                print("No recent companies to enqueue. Run github-only first.")
+            else:
+                enqueued = 0
+                for comp in companies:
+                    if queue.enqueue_company(comp):
+                        enqueued += 1
+                print(f"Enqueued {enqueued}/{len(companies)} companies from recent internships")
+    
+    elif args.command == 'worker':
+        # Consume queue and scrape
+        queue = CompanyQueue()
+        processed = 0
+        print("Worker started. Waiting for jobs...")
+        try:
+            while True:
+                company = queue.dequeue_company(block=True, timeout_seconds=args.timeout)
+                if not company:
+                    if args.once:
+                        break
+                    continue
+                print(f"Processing company: {company}")
+                try:
+                    finder.linkedin_scraper.scrape_companies([company])
+                    processed += 1
+                except Exception as e:
+                    print(f"Error processing {company}: {e}")
+                if args.once:
+                    break
+        except KeyboardInterrupt:
+            print("Worker stopped by user")
+        print(f"Processed {processed} companies")
     
     elif args.command == 'summary':
         finder.show_summary()
